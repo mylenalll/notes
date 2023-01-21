@@ -172,3 +172,57 @@ summary(fit3)
 
 
 
+# =========== Problems from the course
+
+# Write a "get_coefficients" function that receives a data frame with two variables:
+# x (a factor with arbitrary numerical gradations);
+# y (a factor with two gradations). 
+# The function builds a logit model, where y is the dependent variable and x is the independent variable, 
+# and returns a vector with the values of the model's coefficients.
+
+test_data <- read.csv("https://stepik.org/media/attachments/course/524/test_data_01.csv")
+get_coefficients <- function(dataset){
+  test <- glm(y ~ x, dataset, family = "binomial")
+  return(coef(test))
+}
+
+
+
+
+# If there are quantitative predictors in our model, then in the intercept we will have a value corresponding to the base level 
+# of categorical predictors and the zero level of quantitative ones. It doesn't always make sense. In such situations, 
+# it makes sense to center the quantitative variable so that zero is the average value of the variable. The easiest way 
+# to center a variable is to subtract from each observation the average of all observations.
+
+#Your task will be to write a "centered" function that takes as input a dataframe and variable names that need to be centered 
+#as described above.
+
+centered <- function(test_data, var_names){
+  test_data[var_names] <- sapply(test_data[var_names], function(x) x - mean(x))
+  return(test_data)
+}
+
+
+
+
+# Write a function that takes a baggage data set as input. It builds a logit regression where the dependent variable is 
+# whether baggage was forbidden and the predictors are the other variables, and returns a vector with the names of statistically 
+# significant variables (p < 0.05). If there are no significant predictors in the data, the function returns a string with the message "Prediction makes no sense".
+
+test_data1 <- read.csv("https://stepic.org/media/attachments/course/524/test_luggage_1.csv")
+test_data2 <- read.csv("https://stepic.org/media/attachments/course/524/test_luggage_2.csv")
+
+get_features <- function(dataset){
+  dataset <- transform(dataset, is_prohibited = factor(is_prohibited), type = factor(type))
+  fit <- glm(is_prohibited ~ ., dataset, family = "binomial")
+  result <- anova(fit, test = "Chisq")
+  names <- rownames(subset(result,`Pr(>Chi)`<0.05))
+  if (length(names) != 0) {
+    return(names)
+  } else {
+    return("Prediction makes no sense")
+  }
+}
+
+get_features(test_data1)
+get_features(test_data2)
