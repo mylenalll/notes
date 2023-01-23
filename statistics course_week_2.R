@@ -205,24 +205,76 @@ centered <- function(test_data, var_names){
 
 
 
-# Write a function that takes a baggage data set as input. It builds a logit regression where the dependent variable is 
-# whether baggage was forbidden and the predictors are the other variables, and returns a vector with the names of statistically 
-# significant variables (p < 0.05). If there are no significant predictors in the data, the function returns a string with the message "Prediction makes no sense".
+# Write a "normality_test" function that receives a dataframe with an arbitrary number of variables 
+# of different types (quantitative, strings, factors) as input and checks the normality of the distribution 
+# of quantitative variables. The function must return a vector of p-significance values for the shapiro.test 
+# test for each scale variable.оличественной переменной.
+test <- read.csv("https://stepic.org/media/attachments/course/524/test.csv")
 
-test_data1 <- read.csv("https://stepic.org/media/attachments/course/524/test_luggage_1.csv")
-test_data2 <- read.csv("https://stepic.org/media/attachments/course/524/test_luggage_2.csv")
-
-get_features <- function(dataset){
-  dataset <- transform(dataset, is_prohibited = factor(is_prohibited), type = factor(type))
-  fit <- glm(is_prohibited ~ ., dataset, family = "binomial")
-  result <- anova(fit, test = "Chisq")
-  names <- rownames(subset(result,`Pr(>Chi)`<0.05))
-  if (length(names) != 0) {
-    return(names)
-  } else {
-    return("Prediction makes no sense")
-  }
+normality_test <- function(dataset){
+  columns_numeric <- sapply(dataset, is.numeric)
+  return(sapply(dataset[columns_numeric], function(x) shapiro.test(x)$p.value))
 }
 
-get_features(test_data1)
-get_features(test_data2)
+normality_test(test)
+normality_test(iris)
+
+
+
+
+# Write a smart_anova function that takes a dataframe with two variables x and y as input. 
+# The x variable is a scale variable, the y variable is a factor, splitting the observations into three groups.
+# If the distributions in all groups are not significantly different from normal, and the variances in the groups
+# are homogeneous, the function should compare the three groups using analysis of variance and return a named 
+# vector with a p-value, element name is "ANOVA". If the distribution in at least one group is significantly 
+# different from normal or the variances are not homogeneous, the function compares the groups using 
+# the Kruskal-Wallis test and returns a named vector with a p-value, the vector name is "KW".
+test_data <- read.csv("https://stepic.org/media/attachments/course/524/s_anova_test.csv")
+
+# test_data$x[test_data$y == 'A']
+
+smart_anova <- function(test_data){
+  shapiro_result <- tapply(test_data$x, test_data$y, function(x) shapiro.test(x)$p.value)
+  homodencity_check <- bartlett.test(x ~ y, test_data)$p.value 
+  
+  if (min(shapiro_result) < 0.05 | homodencity_check < 0.05){
+    result <- c(kruskal.test(x ~ y, test_data)$p.value)
+    names(result) <- c("KW")
+  } else {
+    fit <- aov(x ~ y, test_data)
+    result <- c(summary(fit)[[1]]$'Pr(>F)'[1])
+    names(result) <- c("ANOVA")
+  }
+  return(result)
+}
+
+smart_anova(test_data)
+
+
+
+
+# Напишите функцию normality_by, которая принимает на вход dataframe c тремя переменными. 
+# Первая переменная количественная, вторая и третья имеют две градации и разбивают наши наблюдения 
+# на группы. Функция должна проверять распределение на нормальность в каждой получившейся группе 
+# и возвращать dataframe с результатами применения теста shapiro.test
+test_data <- read.csv("https://stepic.org/media/attachments/course/524/test_for_norm.csv")
+
+normality_by <- function(test){
+  result <- aggregate(test[[1]] ~ test[[2]] + test[[3]], data = test, function(x) shapiro.test(x)$p.value)
+  
+  names(result) <- c(colnames(test)[2], colnames(test)[3], "p_value")
+  
+  return(result)
+}
+
+normality_by(mtcars[, c("mpg", "am", "vs")])
+normality_by(test_data)
+
+
+
+
+# Using the ggplot2 library, visualize the distribution of the Sepal.Length variable in three groups in the Iris data
+
+ggplot(iris, aes(Sepal.Length)) +
+  geom_density(aes(fill = Species), alpha = 0.2)
+
